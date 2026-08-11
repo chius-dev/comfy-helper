@@ -47,14 +47,32 @@ class Artifact(BaseModel):
     size_bytes: int | None = None
 
 
+class JobProgress(BaseModel):
+    value: int = 0
+    max: int = 0
+    node: str | None = None
+    percent: float | None = None
+
+    @classmethod
+    def from_counts(
+        cls, value: int, maximum: int, node: str | None = None
+    ) -> "JobProgress":
+        percent = None
+        if maximum > 0:
+            percent = round(min(max(value / maximum, 0.0), 1.0) * 100.0, 2)
+        return cls(value=value, max=maximum, node=node, percent=percent)
+
+
 class GenerationJob(BaseModel):
     id: UUID = Field(default_factory=uuid4)
     provider: str
     provider_job_id: str = Field(exclude=True)
+    client_id: str | None = Field(default=None, exclude=True)
     profile_id: str
     status: JobStatus = JobStatus.queued
     request: GenerationRequest
     artifacts: list[Artifact] = Field(default_factory=list)
+    progress: JobProgress | None = None
     error: str | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

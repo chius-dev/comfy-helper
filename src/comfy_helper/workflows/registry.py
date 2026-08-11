@@ -56,7 +56,7 @@ ANIMA_TURBO_TEMPLATE = {
 WAI_ILLUSTRIOUS_TEMPLATE = {
     "1": {
         "class_type": "CheckpointLoaderSimple",
-        "inputs": {"ckpt_name": "waiNSFWIllustrious_v140.safetensors"},
+        "inputs": {"ckpt_name": "waiNSFWIllustrious_v150.safetensors"},
     },
     "2": {
         "class_type": "CLIPTextEncode",
@@ -153,7 +153,7 @@ def get_default_registry() -> WorkflowRegistry:
                     "checkpoint is installed under models/checkpoints."
                 ),
                 model_family="wai",
-                model_dependencies=["waiNSFWIllustrious_v140.safetensors"],
+                model_dependencies=["waiNSFWIllustrious_v150.safetensors"],
                 defaults=WorkflowDefaults(
                     negative_prompt="worst quality, low quality, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, jpeg artifacts, signature, watermark, username, blurry",
                     width=832,

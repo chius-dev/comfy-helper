@@ -4,7 +4,7 @@ from uuid import UUID
 
 import httpx
 from fastapi import FastAPI, HTTPException, status
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 
 from comfy_helper.config import Settings, get_settings
 from comfy_helper.domain.models import Artifact, GenerationJob, GenerationRequest
@@ -15,7 +15,11 @@ from comfy_helper.services.artifacts import (
     ArtifactStore,
     ArtifactTooLargeError,
 )
-from comfy_helper.services.generation import GenerationService, JobNotFoundError
+from comfy_helper.services.generation import (
+    GenerationService,
+    JobNotCancellableError,
+    JobNotFoundError,
+)
 from comfy_helper.services.repository import SqliteJobRepository
 from comfy_helper.workflows.profile import WorkflowProfile
 from comfy_helper.workflows.registry import WorkflowRegistry, get_default_registry
@@ -114,6 +118,38 @@ def create_app(
         except httpx.HTTPError as exc:
             raise HTTPException(
                 status_code=502, detail=f"provider status failed: {exc}"
+            ) from exc
+
+    @app.get("/api/v1/jobs/{job_id}/events")
+    async def stream_job_events(job_id: UUID) -> StreamingResponse:
+        try:
+            await generation_service.get(job_id, refresh=False)
+        except JobNotFoundError as exc:
+            raise HTTPException(status_code=404, detail="job not found") from exc
+
+        return StreamingResponse(
+            generation_service.stream_events(job_id),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
+        )
+
+    @app.post("/api/v1/jobs/{job_id}/cancel", response_model=GenerationJob)
+    async def cancel_job(job_id: UUID) -> GenerationJob:
+        try:
+            return await generation_service.cancel(job_id)
+        except JobNotFoundError as exc:
+            raise HTTPException(status_code=404, detail="job not found") from exc
+        except JobNotCancellableError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        except NotImplementedError as exc:
+            raise HTTPException(status_code=501, detail=str(exc)) from exc
+        except httpx.HTTPError as exc:
+            raise HTTPException(
+                status_code=502, detail=f"provider cancel failed: {exc}"
             ) from exc
 
     @app.get("/api/v1/jobs/{job_id}/artifacts", response_model=list[Artifact])

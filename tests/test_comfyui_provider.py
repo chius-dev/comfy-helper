@@ -256,3 +256,30 @@ async def test_comfyui_provider_surfaces_execution_error_message() -> None:
     assert snapshot.status == JobStatus.failed
     assert snapshot.error == "RuntimeError: CUDA out of memory"
     await provider.close()
+
+
+@pytest.mark.asyncio
+async def test_comfyui_provider_cancels_pending_prompt() -> None:
+    seen: dict[str, object] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/queue" and request.method == "GET":
+            return httpx.Response(
+                200,
+                json={
+                    "queue_running": [],
+                    "queue_pending": [[1, "prompt-123", {}, {}, []]],
+                },
+            )
+        if request.url.path == "/queue" and request.method == "POST":
+            seen["delete"] = json.loads(request.content)
+            return httpx.Response(200, json={})
+        raise AssertionError(f"unexpected {request.method} {request.url.path}")
+
+    client = httpx.AsyncClient(
+        base_url="http://comfy/", transport=httpx.MockTransport(handler)
+    )
+    provider = ComfyUIProvider("http://comfy/", client=client)
+    await provider.cancel("prompt-123")
+    assert seen["delete"] == {"delete": ["prompt-123"]}
+    await provider.close()

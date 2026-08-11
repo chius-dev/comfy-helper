@@ -63,6 +63,8 @@ Settings use the `COMFY_HELPER_` prefix and can be placed in `.env`.
 | `GET` | `/api/v1/workflow-profiles/{id}` | Profile metadata/defaults |
 | `POST` | `/api/v1/generations` | Render and enqueue a generation |
 | `GET` | `/api/v1/jobs/{id}` | Refresh and return a job |
+| `GET` | `/api/v1/jobs/{id}/events` | SSE progress stream until terminal state |
+| `POST` | `/api/v1/jobs/{id}/cancel` | Cancel queued/running job |
 | `GET` | `/api/v1/jobs/{id}/artifacts` | Return generated artifacts |
 | `GET` | `/api/v1/artifacts/{id}` | Retrieve stored artifact bytes |
 

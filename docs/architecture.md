@@ -51,6 +51,12 @@ If a newly submitted prompt is briefly absent from both history and queue, the a
 
 Jobs and artifact metadata are persisted in SQLite (`COMFY_HELPER_DATABASE_PATH`). Artifact bytes are streamed from ComfyUI `/view` with a configurable size cap, written through a temporary file, and atomically renamed into `COMFY_HELPER_ARTIFACT_DIR`. Restarting the gateway restores job and artifact lookup from SQLite plus the on-disk files.
 
+## Cancel and progress
+
+- `POST /api/v1/jobs/{id}/cancel` deletes a pending ComfyUI prompt or interrupts a running one, then marks the gateway job `cancelled`.
+- Job responses include optional `progress` (`value`, `max`, `node`, `percent`) populated from ComfyUI WebSocket `progress`/`executing` events when available.
+- `GET /api/v1/jobs/{id}/events` is an SSE stream that repeatedly emits the refreshed job JSON until a terminal state, then sends `event: done`.
+
 Likely next implementation slices:
 
 - background reconciliation and WebSocket/SSE progress;

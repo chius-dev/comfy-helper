@@ -3,7 +3,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from comfy_helper.domain.models import Artifact, JobStatus
+from comfy_helper.domain.models import Artifact, JobProgress, JobStatus
 
 
 class ProviderHealth(BaseModel):
@@ -27,6 +27,7 @@ class ProviderJobSnapshot(BaseModel):
     status: JobStatus
     artifacts: list[Artifact] = Field(default_factory=list)
     error: str | None = None
+    progress: JobProgress | None = None
 
 
 class GenerationProvider(ABC):
@@ -50,6 +51,9 @@ class GenerationProvider(ABC):
     async def download_artifact(
         self, artifact: Artifact
     ) -> ProviderArtifactContent: ...
+
+    async def cancel(self, provider_job_id: str) -> None:
+        raise NotImplementedError(f"{self.name} does not support cancellation")
 
     async def close(self) -> None:
         return None

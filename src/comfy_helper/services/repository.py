@@ -88,6 +88,7 @@ class SqliteJobRepository:
     def _dump_job(job: GenerationJob) -> dict:
         payload = job.model_dump(mode="json")
         payload["provider_job_id"] = job.provider_job_id
+        payload["client_id"] = job.client_id
         payload["artifacts"] = [
             SqliteJobRepository._dump_artifact(artifact) for artifact in job.artifacts
         ]

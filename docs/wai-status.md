@@ -14,54 +14,66 @@
 Default checkpoint name:
 
 ```text
-waiNSFWIllustrious_v140.safetensors
+waiNSFWIllustrious_v150.safetensors
 ```
 
 Defaults target portrait anime generation: `832x1216`, `28` steps, `CFG 5.0`.
 
-## Current host blockage (inspected 2026-08-11)
+## Install path used by this host
 
-On the Windows ComfyUI checkout at `C:\Chius\repo\github\ComfyUI`:
-
-- workflows present: only `Anima_Turbo_T2I.json` / `Anima_Turbo_T2I_api.json`
-- `models/diffusion_models`: `anima-turbo-v1.0.safetensors`
-- `models/checkpoints`: empty (placeholder only)
-- no WAI / Illustrious checkpoint or workflow file found
-
-Therefore `wai-illustrious-t2i` is registered and renderable by the gateway, but a live generation against this host will fail until a matching checkpoint is installed.
-
-## Minimal unblock path
-
-1. Install a WAI Illustrious SDXL checkpoint into:
+Download target on the Windows ComfyUI machine:
 
 ```text
-C:\Chius\repo\github\ComfyUI\models\checkpoints\
+C:\Chius\repo\github\ComfyUI\models\checkpoints\waiNSFWIllustrious_v150.safetensors
 ```
 
-2. If the filename differs from `waiNSFWIllustrious_v140.safetensors`, either rename it to match or update the profile template `ckpt_name`.
+Source:
 
-3. Confirm ComfyUI inventory:
+```text
+https://huggingface.co/IbarakiDouji/WAI-NSFW-illustrious-SDXL/resolve/main/waiNSFWIllustrious_v150.safetensors
+```
+
+Size is about **6.9 GiB**.
+
+## Verify inventory
 
 ```bash
 curl -fsS http://10.0.0.180:8188/models/checkpoints
 ```
 
-4. Submit through the gateway:
+Expected to include `waiNSFWIllustrious_v150.safetensors`.
+
+## Real generation through the gateway
 
 ```bash
 curl -fsS -X POST http://127.0.0.1:8000/api/v1/generations \
   -H 'content-type: application/json' \
   --data '{
     "profile_id": "wai-illustrious-t2i",
-    "prompt": "masterpiece, best quality, 1girl, anime style",
+    "prompt": "masterpiece, best quality, 1girl, anime style, blue hair, rooftop, sunset",
+    "negative_prompt": "worst quality, low quality, bad anatomy, bad hands, text, watermark",
     "width": 832,
     "height": 1216,
-    "seed": 42,
-    "steps": 28,
+    "seed": 20260811,
+    "steps": 20,
     "cfg": 5.0
   }'
 ```
 
-## Why this is not fake-runnable
+Progress stream:
 
-The project rule is gateway-first and environment-honest: profiles may be registered ahead of model install, but docs must not claim a live path that the host cannot execute. Anima remains the verified runnable family on this machine.
+```bash
+curl -N "http://127.0.0.1:8000/api/v1/jobs/$JOB_ID/events"
+```
+
+Cancel:
+
+```bash
+curl -fsS -X POST "http://127.0.0.1:8000/api/v1/jobs/$JOB_ID/cancel"
+```
+
+## Notes
+
+- Anima remains the previously verified live path on this machine.
+- WAI live verification depends on the checkpoint download completing and ComfyUI reloading model inventory.
+- On an 8 GB laptop GPU, prefer moderate resolution/steps to reduce OOM risk.

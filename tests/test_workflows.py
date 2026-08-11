@@ -45,7 +45,7 @@ def test_wai_profile_renders_sdxl_checkpoint_api_workflow() -> None:
 
     assert profile.model_family == "wai"
     assert workflow["1"]["class_type"] == "CheckpointLoaderSimple"
-    assert workflow["1"]["inputs"]["ckpt_name"] == "waiNSFWIllustrious_v140.safetensors"
+    assert workflow["1"]["inputs"]["ckpt_name"] == "waiNSFWIllustrious_v150.safetensors"
     assert workflow["2"]["inputs"]["text"] == "1girl, masterpiece"
     assert workflow["3"]["inputs"]["text"] == "low quality"
     assert workflow["4"]["inputs"]["width"] == 1024
