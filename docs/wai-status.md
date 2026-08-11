@@ -44,6 +44,26 @@ curl -fsS http://10.0.0.180:8188/models/checkpoints
 # ["waiNSFWIllustrious_v150.safetensors"]
 ```
 
+## ComfyUI local workflow files
+
+Exported onto the Windows host:
+
+```text
+C:\Chius\repo\github\ComfyUI\user\default\workflows\WAI_Illustrious_T2I.json
+C:\Chius\repo\github\ComfyUI\user\default\workflows\WAI_Illustrious_T2I_api.json
+```
+
+Repo copies:
+
+```text
+workflows/WAI_Illustrious_T2I.json
+workflows/WAI_Illustrious_T2I_api.json
+```
+
+- UI file: open from ComfyUI workflow browser
+- API file: same graph as gateway profile `wai-illustrious-t2i`
+- Validated against live `/object_info` and accepted by `POST /prompt` with empty `node_errors`
+
 ## Verified real generation (2026-08-11)
 
 Gateway job:
