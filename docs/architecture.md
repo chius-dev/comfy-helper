@@ -59,8 +59,7 @@ Jobs and artifact metadata are persisted in SQLite (`COMFY_HELPER_DATABASE_PATH`
 
 Likely next implementation slices:
 
-- background reconciliation and WebSocket/SSE progress;
-- cancellation and queue controls;
+- cancellation acknowledgement from ComfyUI history interrupted state edge-cases;
 - workflow/profile schema versioning and stronger parameter bindings;
 - automatic WAI checkpoint discovery once a checkpoint is installed;
 - authentication, quotas, idempotency keys, and multi-provider routing.
