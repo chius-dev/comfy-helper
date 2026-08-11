@@ -32,3 +32,4 @@ packages = ["src/comfy_helper"]
 addopts = "-q"
 testpaths = ["tests"]
 asyncio_mode = "auto"
+pythonpath = ["src", "."]

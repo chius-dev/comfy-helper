@@ -49,35 +49,35 @@ If a newly submitted prompt is briefly absent from both history and queue, the a
 
 ## Current persistence and next boundary
 
-The gateway keeps jobs and artifact metadata in process memory while artifact bytes are persisted to the filesystem. Restarting the service loses gateway job and artifact lookup metadata, while the files and ComfyUI history remain. A durable repository (SQLite/PostgreSQL) can replace the in-memory mapping without changing API or provider contracts.
+Jobs and artifact metadata are persisted in SQLite (`COMFY_HELPER_DATABASE_PATH`). Artifact bytes are streamed from ComfyUI `/view` with a configurable size cap, written through a temporary file, and atomically renamed into `COMFY_HELPER_ARTIFACT_DIR`. Restarting the gateway restores job and artifact lookup from SQLite plus the on-disk files.
 
 Likely next implementation slices:
 
 - background reconciliation and WebSocket/SSE progress;
-- durable job and artifact repositories;
 - cancellation and queue controls;
-- artifact proxy/download policies instead of exposing provider URLs;
 - workflow/profile schema versioning and stronger parameter bindings;
-- WAI checkpoint discovery and a WAI-specific profile once a checkpoint is installed;
+- automatic WAI checkpoint discovery once a checkpoint is installed;
 - authentication, quotas, idempotency keys, and multi-provider routing.
 
-## Live environment findings (2026-08-09)
+## Live environment findings (2026-08-09 / 2026-08-11)
 
-The configured ComfyUI endpoint was reachable and reported:
+The configured ComfyUI endpoint previously reported:
 
 - Windows, ComfyUI `0.30.0`;
 - NVIDIA GeForce RTX 4060 Laptop GPU with 8 GB VRAM;
-- empty queue during inspection;
 - diffusion model `anima-turbo-v1.0.safetensors`;
-- text encoder `qwen_3_06b_base.safetensors` (reported by loader schema);
+- text encoder `qwen_3_06b_base.safetensors`;
 - VAE `qwen_image_vae.safetensors`;
 - no checkpoint-format models in `models/checkpoints`.
 
-The Windows checkout contains an API-format workflow at `user/default/workflows/Anima_Turbo_T2I_api.json`. The registered `anima-turbo-t2i` profile follows that graph and uses only built-in node types.
+As of 2026-08-11 the host still had only the Anima workflow and Anima diffusion model; WAI checkpoints remain absent. See [wai-status.md](wai-status.md).
+
+The Windows checkout contains an API-format workflow at `user/default/workflows/Anima_Turbo_T2I_api.json`. The registered `anima-turbo-t2i` profile follows that graph and uses only built-in node types. The registered `wai-illustrious-t2i` profile is a standard SDXL checkpoint graph reserved for WAI once installed.
 
 ## Decisions
 
 - **Profiles, not arbitrary workflows, are public resources.** Accepting arbitrary graphs would expose custom-node execution and make validation/security unbounded.
 - **Provider job IDs stay internal.** Gateway IDs remain stable if storage or provider routing changes later.
 - **Polling is the first transport.** It is simple and maps directly to ComfyUI history. Streaming can be additive.
-- **Anima first.** It is the actually installed model family. WAI remains an intended family, not a fabricated runnable profile.
+- **Anima first for live verification.** It is the installed model family. WAI is registered as a profile family with an honest host-level blockage until a checkpoint exists.
+- **SQLite is enough for single-process restart recovery.** No external database service is required for this slice.

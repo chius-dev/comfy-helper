@@ -109,3 +109,13 @@ A real run through the gateway was completed on 2026-08-09 against ComfyUI `0.30
 - SHA-256: `5e1aad314924e5656b75e86d3625f74139ec670d3cb9d49cfd996c42d6d6f286`
 
 The bytes retrieved through `/api/v1/artifacts/{id}` matched the filesystem-stored bytes exactly. The output was visually checked and was a coherent anime illustration rather than a blank or corrupted image.
+
+## Restart recovery note
+
+After the SQLite persistence slice, job and artifact metadata survive gateway restarts when `COMFY_HELPER_DATABASE_PATH` and `COMFY_HELPER_ARTIFACT_DIR` are preserved. Verify with:
+
+```bash
+# after a generation succeeds and the gateway is restarted
+curl -fsS "http://127.0.0.1:8000/api/v1/jobs/$JOB_ID"
+curl -fsS "http://127.0.0.1:8000/api/v1/artifacts/$ARTIFACT_ID" -o restored.png
+```

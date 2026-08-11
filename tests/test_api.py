@@ -1,64 +1,8 @@
-from typing import Any
-
-import httpx
 import pytest
 
 from comfy_helper.api import create_app
 from comfy_helper.config import Settings
-from comfy_helper.domain.models import Artifact, JobStatus
-from comfy_helper.providers.base import (
-    GenerationProvider,
-    ProviderArtifactContent,
-    ProviderHealth,
-    ProviderJobSnapshot,
-    ProviderSubmission,
-)
-
-
-class FakeProvider(GenerationProvider):
-    name = "comfyui"
-
-    def __init__(self) -> None:
-        self.submitted_workflow: dict[str, Any] | None = None
-
-    async def health(self) -> ProviderHealth:
-        return ProviderHealth(name=self.name, status="ok", version="test")
-
-    async def submit(
-        self, workflow: dict[str, Any], client_id: str
-    ) -> ProviderSubmission:
-        self.submitted_workflow = workflow
-        return ProviderSubmission(id="provider-job-1", queue_number=1)
-
-    async def get_job(self, provider_job_id: str) -> ProviderJobSnapshot:
-        return ProviderJobSnapshot(
-            status=JobStatus.succeeded,
-            artifacts=[
-                Artifact(
-                    filename="generated.png",
-                    source_url="http://comfy/view?filename=generated.png",
-                )
-            ],
-        )
-
-    async def model_inventory(self) -> dict[str, list[str]]:
-        return {"diffusion_models": ["anima-turbo-v1.0.safetensors"]}
-
-    async def download_artifact(self, artifact: Artifact) -> ProviderArtifactContent:
-        return ProviderArtifactContent(
-            content=b"generated-image", content_type="image/png"
-        )
-
-
-@pytest.fixture
-async def client_and_provider(tmp_path):
-    provider = FakeProvider()
-    settings = Settings(artifact_dir=tmp_path)
-    transport = httpx.ASGITransport(
-        app=create_app(settings=settings, provider=provider)
-    )
-    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-        yield client, provider
+from tests.fakes import FakeProvider
 
 
 @pytest.mark.asyncio
@@ -93,15 +37,21 @@ async def test_core_resources_list_provider_and_workflow_profile(
     assert providers.json()[0]["models"]["diffusion_models"] == [
         "anima-turbo-v1.0.safetensors"
     ]
-    assert profiles.json()[0]["id"] == "anima-turbo-t2i"
+    profile_ids = {item["id"] for item in profiles.json()}
+    assert profile_ids == {"anima-turbo-t2i", "wai-illustrious-t2i"}
     assert profile.json()["model_family"] == "anima"
     assert "template" not in profile.json()
+    wai = await client.get("/api/v1/workflow-profiles/wai-illustrious-t2i")
+    assert wai.json()["model_family"] == "wai"
 
 
-def test_openapi_hides_provider_job_id() -> None:
-    properties = create_app(provider=FakeProvider()).openapi()["components"]["schemas"][
-        "GenerationJob"
-    ]["properties"]
+def test_openapi_hides_provider_job_id(tmp_path) -> None:
+    settings = Settings(
+        artifact_dir=tmp_path / "artifacts", database_path=tmp_path / "openapi.db"
+    )
+    properties = create_app(settings=settings, provider=FakeProvider()).openapi()[
+        "components"
+    ]["schemas"]["GenerationJob"]["properties"]
 
     assert "provider_job_id" not in properties
 

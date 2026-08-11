@@ -10,8 +10,13 @@ from comfy_helper.config import Settings, get_settings
 from comfy_helper.domain.models import Artifact, GenerationJob, GenerationRequest
 from comfy_helper.providers.base import GenerationProvider
 from comfy_helper.providers.comfyui import ComfyUIProvider
-from comfy_helper.services.artifacts import ArtifactNotFoundError, ArtifactStore
+from comfy_helper.services.artifacts import (
+    ArtifactNotFoundError,
+    ArtifactStore,
+    ArtifactTooLargeError,
+)
 from comfy_helper.services.generation import GenerationService, JobNotFoundError
+from comfy_helper.services.repository import SqliteJobRepository
 from comfy_helper.workflows.profile import WorkflowProfile
 from comfy_helper.workflows.registry import WorkflowRegistry, get_default_registry
 
@@ -20,21 +25,32 @@ def create_app(
     settings: Settings | None = None,
     provider: GenerationProvider | None = None,
     registry: WorkflowRegistry | None = None,
+    repository: SqliteJobRepository | None = None,
 ) -> FastAPI:
     settings = settings or get_settings()
     provider = provider or ComfyUIProvider(
-        str(settings.comfyui_url), timeout=settings.comfyui_timeout_seconds
+        str(settings.comfyui_url),
+        timeout=settings.comfyui_timeout_seconds,
+        max_artifact_bytes=settings.max_artifact_bytes,
     )
     registry = registry or get_default_registry()
-    artifact_store = ArtifactStore(settings.artifact_dir)
-    generation_service = GenerationService(provider, registry, artifact_store)
+    artifact_store = ArtifactStore(
+        settings.artifact_dir, max_bytes=settings.max_artifact_bytes
+    )
+    if repository is None:
+        repository = SqliteJobRepository(settings.database_path)
+    generation_service = GenerationService(
+        provider, registry, artifact_store, repository=repository
+    )
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         app.state.provider = provider
         app.state.generation_service = generation_service
+        app.state.repository = repository
         yield
         await provider.close()
+        repository.close()
 
     app = FastAPI(
         title=settings.app_name,
@@ -93,6 +109,8 @@ def create_app(
             return await generation_service.get(job_id)
         except JobNotFoundError as exc:
             raise HTTPException(status_code=404, detail="job not found") from exc
+        except ArtifactTooLargeError as exc:
+            raise HTTPException(status_code=413, detail=str(exc)) from exc
         except httpx.HTTPError as exc:
             raise HTTPException(
                 status_code=502, detail=f"provider status failed: {exc}"
@@ -104,6 +122,8 @@ def create_app(
             return (await generation_service.get(job_id)).artifacts
         except JobNotFoundError as exc:
             raise HTTPException(status_code=404, detail="job not found") from exc
+        except ArtifactTooLargeError as exc:
+            raise HTTPException(status_code=413, detail=str(exc)) from exc
         except httpx.HTTPError as exc:
             raise HTTPException(
                 status_code=502, detail=f"provider status failed: {exc}"

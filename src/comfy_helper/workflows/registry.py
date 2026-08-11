@@ -48,6 +48,56 @@ ANIMA_TURBO_TEMPLATE = {
     },
 }
 
+# Standard SDXL checkpoint graph for WAI-family Illustrious-style models.
+# Host currently has no checkpoints installed; this profile is registered so
+# clients can target WAI once a matching checkpoint is placed in
+# models/checkpoints. Default filename is the common public WAI Illustrious
+# SDXL release naming convention and can be overridden after install.
+WAI_ILLUSTRIOUS_TEMPLATE = {
+    "1": {
+        "class_type": "CheckpointLoaderSimple",
+        "inputs": {"ckpt_name": "waiNSFWIllustrious_v140.safetensors"},
+    },
+    "2": {
+        "class_type": "CLIPTextEncode",
+        "inputs": {"text": "", "clip": ["1", 1]},
+    },
+    "3": {
+        "class_type": "CLIPTextEncode",
+        "inputs": {"text": "", "clip": ["1", 1]},
+    },
+    "4": {
+        "class_type": "EmptyLatentImage",
+        "inputs": {"width": 832, "height": 1216, "batch_size": 1},
+    },
+    "5": {
+        "class_type": "KSampler",
+        "inputs": {
+            "seed": 0,
+            "steps": 28,
+            "cfg": 5.0,
+            "sampler_name": "euler_ancestral",
+            "scheduler": "normal",
+            "denoise": 1.0,
+            "model": ["1", 0],
+            "positive": ["2", 0],
+            "negative": ["3", 0],
+            "latent_image": ["4", 0],
+        },
+    },
+    "6": {
+        "class_type": "VAEDecode",
+        "inputs": {"samples": ["5", 0], "vae": ["1", 2]},
+    },
+    "7": {
+        "class_type": "SaveImage",
+        "inputs": {
+            "filename_prefix": "comfy-helper/wai-illustrious",
+            "images": ["6", 0],
+        },
+    },
+}
+
 
 class WorkflowRegistry:
     def __init__(self, profiles: list[WorkflowProfile]) -> None:
@@ -93,6 +143,34 @@ def get_default_registry() -> WorkflowRegistry:
                     "steps": ParameterBinding(node_id="7", input_name="steps"),
                     "cfg": ParameterBinding(node_id="7", input_name="cfg"),
                 },
-            )
+            ),
+            WorkflowProfile(
+                id="wai-illustrious-t2i",
+                name="WAI Illustrious text-to-image",
+                description=(
+                    "SDXL anime profile for WAI Illustrious-family checkpoints. "
+                    "Not currently runnable on this host until a matching "
+                    "checkpoint is installed under models/checkpoints."
+                ),
+                model_family="wai",
+                model_dependencies=["waiNSFWIllustrious_v140.safetensors"],
+                defaults=WorkflowDefaults(
+                    negative_prompt="worst quality, low quality, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, jpeg artifacts, signature, watermark, username, blurry",
+                    width=832,
+                    height=1216,
+                    steps=28,
+                    cfg=5.0,
+                ),
+                template=WAI_ILLUSTRIOUS_TEMPLATE,
+                bindings={
+                    "prompt": ParameterBinding(node_id="2", input_name="text"),
+                    "negative_prompt": ParameterBinding(node_id="3", input_name="text"),
+                    "width": ParameterBinding(node_id="4", input_name="width"),
+                    "height": ParameterBinding(node_id="4", input_name="height"),
+                    "seed": ParameterBinding(node_id="5", input_name="seed"),
+                    "steps": ParameterBinding(node_id="5", input_name="steps"),
+                    "cfg": ParameterBinding(node_id="5", input_name="cfg"),
+                },
+            ),
         ]
     )

@@ -8,7 +8,8 @@ from comfy_helper.domain.models import (
     JobStatus,
 )
 from comfy_helper.providers.base import GenerationProvider
-from comfy_helper.services.artifacts import ArtifactStore
+from comfy_helper.services.artifacts import ArtifactNotFoundError, ArtifactStore
+from comfy_helper.services.repository import SqliteJobRepository
 from comfy_helper.workflows.registry import WorkflowRegistry
 
 
@@ -22,10 +23,12 @@ class GenerationService:
         provider: GenerationProvider,
         registry: WorkflowRegistry,
         artifact_store: ArtifactStore,
+        repository: SqliteJobRepository | None = None,
     ) -> None:
         self._provider = provider
         self._registry = registry
         self._artifact_store = artifact_store
+        self._repository = repository
         self._jobs: dict[UUID, GenerationJob] = {}
 
     async def create(self, request: GenerationRequest) -> GenerationJob:
@@ -39,13 +42,19 @@ class GenerationService:
             request=request,
         )
         self._jobs[job.id] = job
+        self._persist(job)
         return job
 
     async def get(self, job_id: UUID, refresh: bool = True) -> GenerationJob:
-        try:
-            job = self._jobs[job_id]
-        except KeyError as exc:
-            raise JobNotFoundError(str(job_id)) from exc
+        job = self._jobs.get(job_id)
+        if job is None and self._repository is not None:
+            job = self._repository.get_job(job_id)
+            if job is not None:
+                for artifact in job.artifacts:
+                    self._artifact_store.register(artifact)
+                self._jobs[job.id] = job
+        if job is None:
+            raise JobNotFoundError(str(job_id))
 
         terminal = {JobStatus.succeeded, JobStatus.failed, JobStatus.cancelled}
         if refresh and job.status not in terminal:
@@ -58,6 +67,7 @@ class GenerationService:
             job.artifacts = snapshot.artifacts
             job.error = snapshot.error
             job.updated_at = datetime.now(UTC)
+            self._persist(job)
         return job
 
     async def _store_artifacts(
@@ -70,4 +80,16 @@ class GenerationService:
         return stored
 
     def get_artifact(self, artifact_id: UUID) -> Artifact:
-        return self._artifact_store.get(artifact_id)
+        try:
+            return self._artifact_store.get(artifact_id)
+        except ArtifactNotFoundError:
+            if self._repository is None:
+                raise
+            artifact = self._repository.get_artifact(artifact_id)
+            if artifact is None:
+                raise ArtifactNotFoundError(str(artifact_id))
+            return self._artifact_store.register(artifact)
+
+    def _persist(self, job: GenerationJob) -> None:
+        if self._repository is not None:
+            self._repository.save_job(job)

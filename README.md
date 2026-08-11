@@ -8,12 +8,14 @@ A gateway-first FastAPI service for named ComfyUI generation workflows. The API 
 - FastAPI application and OpenAPI schema;
 - provider abstraction plus a ComfyUI REST adapter;
 - generation/job/artifact domain models;
-- in-memory job orchestration with filesystem-backed artifact storage;
-- an installed-model-compatible `anima-turbo-t2i` profile;
+- SQLite job/artifact metadata persistence with filesystem-backed artifact bytes;
+- atomic artifact writes with configurable size limits and streamed provider downloads;
+- installed-model-compatible `anima-turbo-t2i` profile;
+- registered `wai-illustrious-t2i` profile (blocked until a WAI checkpoint is installed);
 - health, provider, profile, generation, job, and artifact endpoints;
-- unit/API tests.
+- unit/API tests and verified real Anima generation path.
 
-See [docs/architecture.md](docs/architecture.md) for boundaries, decisions, live environment findings, and next steps.
+See [docs/architecture.md](docs/architecture.md) for boundaries and decisions. See [docs/end-to-end.md](docs/end-to-end.md) for the real run procedure. See [docs/wai-status.md](docs/wai-status.md) for the current WAI host blockage.
 
 ## Requirements
 
@@ -48,6 +50,8 @@ Settings use the `COMFY_HELPER_` prefix and can be placed in `.env`.
 | `COMFY_HELPER_COMFYUI_URL` | `http://10.0.0.180:8188/` | ComfyUI base URL |
 | `COMFY_HELPER_COMFYUI_TIMEOUT_SECONDS` | `10` | Provider HTTP timeout |
 | `COMFY_HELPER_ARTIFACT_DIR` | `artifacts` | Directory for gateway-owned output files |
+| `COMFY_HELPER_DATABASE_PATH` | `data/comfy-helper.db` | SQLite path for jobs/artifact metadata |
+| `COMFY_HELPER_MAX_ARTIFACT_BYTES` | `52428800` | Max downloaded/stored artifact size (50 MiB) |
 
 ## API
 
@@ -76,15 +80,12 @@ curl -sS http://127.0.0.1:8000/api/v1/generations \
   }'
 ```
 
-`seed` may be omitted; the current skeleton then uses profile seed `0`. Random seed policy is intentionally deferred until job persistence records the selected seed reliably.
-
 ## Development
 
 ```bash
 uv run --extra dev pytest
 uv run --extra dev ruff check .
+uv run --extra dev ruff format --check .
 ```
 
-For the complete real execution and verification procedure, see [docs/end-to-end.md](docs/end-to-end.md).
-
-Jobs and artifact metadata are currently stored in memory; artifact bytes are stored under `COMFY_HELPER_ARTIFACT_DIR`. This is suitable for a single-process gateway. Restart-safe job lookup is intentionally deferred.
+Jobs and artifact metadata are stored in SQLite (`COMFY_HELPER_DATABASE_PATH`). Artifact bytes are stored under `COMFY_HELPER_ARTIFACT_DIR` using temporary files and atomic rename. Restarting the gateway keeps job and artifact lookup as long as the DB and artifact directory remain.

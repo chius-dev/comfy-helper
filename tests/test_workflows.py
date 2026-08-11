@@ -28,6 +28,33 @@ def test_anima_profile_renders_runnable_api_workflow() -> None:
     assert workflow["9"]["class_type"] == "SaveImage"
 
 
+def test_wai_profile_renders_sdxl_checkpoint_api_workflow() -> None:
+    profile = get_default_registry().get("wai-illustrious-t2i")
+
+    workflow = profile.render(
+        {
+            "prompt": "1girl, masterpiece",
+            "negative_prompt": "low quality",
+            "width": 1024,
+            "height": 1024,
+            "seed": 7,
+            "steps": 24,
+            "cfg": 4.5,
+        }
+    )
+
+    assert profile.model_family == "wai"
+    assert workflow["1"]["class_type"] == "CheckpointLoaderSimple"
+    assert workflow["1"]["inputs"]["ckpt_name"] == "waiNSFWIllustrious_v140.safetensors"
+    assert workflow["2"]["inputs"]["text"] == "1girl, masterpiece"
+    assert workflow["3"]["inputs"]["text"] == "low quality"
+    assert workflow["4"]["inputs"]["width"] == 1024
+    assert workflow["5"]["inputs"]["seed"] == 7
+    assert workflow["5"]["inputs"]["steps"] == 24
+    assert workflow["5"]["inputs"]["cfg"] == 4.5
+    assert workflow["7"]["class_type"] == "SaveImage"
+
+
 def test_generation_request_and_job_status_are_typed() -> None:
     request = GenerationRequest(profile_id="anima-turbo-t2i", prompt="1girl")
 

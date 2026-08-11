@@ -25,6 +25,7 @@ class ComfyUIProvider(GenerationProvider):
         client: httpx.AsyncClient | None = None,
         missing_prompt_grace_seconds: float = 5.0,
         clock: Callable[[], float] = monotonic,
+        max_artifact_bytes: int = 50 * 1024 * 1024,
     ) -> None:
         self._base_url = base_url.rstrip("/") + "/"
         self._client = client or httpx.AsyncClient(
@@ -32,6 +33,7 @@ class ComfyUIProvider(GenerationProvider):
         )
         self._missing_prompt_grace_seconds = missing_prompt_grace_seconds
         self._clock = clock
+        self._max_artifact_bytes = max_artifact_bytes
         self._submitted_at: dict[str, float] = {}
 
     async def health(self) -> ProviderHealth:
@@ -104,18 +106,32 @@ class ComfyUIProvider(GenerationProvider):
         return artifacts
 
     async def download_artifact(self, artifact: Artifact) -> ProviderArtifactContent:
-        response = await self._client.get(
+        from comfy_helper.services.artifacts import ArtifactTooLargeError
+
+        async with self._client.stream(
+            "GET",
             "view",
             params={
                 "filename": artifact.filename,
                 "subfolder": artifact.subfolder,
                 "type": artifact.storage_type,
             },
-        )
-        response.raise_for_status()
-        content_type = response.headers.get("content-type", "application/octet-stream")
+        ) as response:
+            response.raise_for_status()
+            content_type = response.headers.get(
+                "content-type", "application/octet-stream"
+            )
+            chunks: list[bytes] = []
+            total = 0
+            async for chunk in response.aiter_bytes():
+                total += len(chunk)
+                if total > self._max_artifact_bytes:
+                    raise ArtifactTooLargeError(
+                        f"artifact exceeds max size of {self._max_artifact_bytes} bytes"
+                    )
+                chunks.append(chunk)
         return ProviderArtifactContent(
-            content=response.content,
+            content=b"".join(chunks),
             content_type=content_type.split(";", 1)[0],
         )
 
