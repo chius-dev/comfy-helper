@@ -149,8 +149,8 @@ def get_default_registry() -> WorkflowRegistry:
                 name="WAI Illustrious text-to-image",
                 description=(
                     "SDXL anime profile for WAI Illustrious-family checkpoints. "
-                    "Not currently runnable on this host until a matching "
-                    "checkpoint is installed under models/checkpoints."
+                    "Verified with waiNSFWIllustrious_v150.safetensors on the "
+                    "local ComfyUI host."
                 ),
                 model_family="wai",
                 model_dependencies=["waiNSFWIllustrious_v150.safetensors"],

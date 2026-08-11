@@ -75,14 +75,19 @@ The configured ComfyUI endpoint previously reported:
 - VAE `qwen_image_vae.safetensors`;
 - no checkpoint-format models in `models/checkpoints`.
 
-As of 2026-08-11 the host still had only the Anima workflow and Anima diffusion model; WAI checkpoints remain absent. See [wai-status.md](wai-status.md).
+As of 2026-08-11 the host has:
 
-The Windows checkout contains an API-format workflow at `user/default/workflows/Anima_Turbo_T2I_api.json`. The registered `anima-turbo-t2i` profile follows that graph and uses only built-in node types. The registered `wai-illustrious-t2i` profile is a standard SDXL checkpoint graph reserved for WAI once installed.
+- Anima diffusion model for `anima-turbo-t2i`
+- WAI checkpoint `waiNSFWIllustrious_v150.safetensors` for `wai-illustrious-t2i`
+
+Both profiles have verified real gateway generations. See [wai-status.md](wai-status.md).
+
+The Windows checkout contains an API-format workflow at `user/default/workflows/Anima_Turbo_T2I_api.json`. The registered `anima-turbo-t2i` profile follows that graph and uses only built-in node types. The registered `wai-illustrious-t2i` profile is a standard SDXL checkpoint graph using `waiNSFWIllustrious_v150.safetensors`.
 
 ## Decisions
 
 - **Profiles, not arbitrary workflows, are public resources.** Accepting arbitrary graphs would expose custom-node execution and make validation/security unbounded.
 - **Provider job IDs stay internal.** Gateway IDs remain stable if storage or provider routing changes later.
 - **Polling is the first transport.** It is simple and maps directly to ComfyUI history. Streaming can be additive.
-- **Anima first for live verification.** It is the installed model family. WAI is registered as a profile family with an honest host-level blockage until a checkpoint exists.
+- **Anima and WAI are both verified live profiles.** Anima was first; WAI Illustrious v150 was installed and verified through the gateway on 2026-08-11.
 - **SQLite is enough for single-process restart recovery.** No external database service is required for this slice.

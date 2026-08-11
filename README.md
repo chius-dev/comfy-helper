@@ -11,11 +11,11 @@ A gateway-first FastAPI service for named ComfyUI generation workflows. The API 
 - SQLite job/artifact metadata persistence with filesystem-backed artifact bytes;
 - atomic artifact writes with configurable size limits and streamed provider downloads;
 - installed-model-compatible `anima-turbo-t2i` profile;
-- registered `wai-illustrious-t2i` profile (blocked until a WAI checkpoint is installed);
-- health, provider, profile, generation, job, and artifact endpoints;
-- unit/API tests and verified real Anima generation path.
+- verified `wai-illustrious-t2i` profile (WAI Illustrious SDXL checkpoint);
+- health, provider, profile, generation, job, cancel, SSE progress, and artifact endpoints;
+- unit/API tests and verified real Anima + WAI generation paths.
 
-See [docs/architecture.md](docs/architecture.md) for boundaries and decisions. See [docs/end-to-end.md](docs/end-to-end.md) for the real run procedure. See [docs/wai-status.md](docs/wai-status.md) for the current WAI host blockage.
+See [docs/architecture.md](docs/architecture.md) for boundaries and decisions. See [docs/end-to-end.md](docs/end-to-end.md) for the Anima run procedure. See [docs/wai-status.md](docs/wai-status.md) for the verified WAI path.
 
 ## Requirements
 
